@@ -1,21 +1,3 @@
-/**
-OpenWorlds Copyright (C) 2008 Neophile
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-**/
-
 // ****************************************************************************
 // *                                                                          *
 // *              CPAQUET.HPP : Classe de formatage des paquets tcp           *
@@ -33,7 +15,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define CPAQUET_HPP
 
 #include "Arduino.h"
+#include <StandardCplusplus.h>
+#include <system_configuration.h>
+#include <unwind-cxx.h>
+#include <utility.h>
+#include <iterator>
+#include <vector>
+#include <string>
 
+using namespace std;
 enum PQ_RESULT
 {
 	PQ_OK=0,
@@ -41,71 +31,72 @@ enum PQ_RESULT
 	PQ_BAD_LENGTH,
 	PQ_TOO_LONG
 };
-typedef char BYTE; // Signed Byte (8bits)
-typedef unsigned char UBYTE; // Unsigned Byte (8bits)
-typedef short (WORD); // Signed Word (16 Bits) 
-typedef unsigned short UWORD; // Unsigned Word (16 Bits)
-typedef long DWORD; // Signed Double Word (32Bit)
-typedef unsigned long UDWORD; // Unsigned Double Word (32 Bits)
+typedef char INT8; // Signed Byte (8bits)
+typedef unsigned char UINT8; // Unsigned Byte (8bits)
+typedef short INT16; // Signed Word (16 Bits)
+typedef unsigned short UINT16; // Unsigned Word (16 Bits)
+typedef long INT32; // Signed Double Word (32Bit)
+typedef unsigned long UINT32; // Unsigned Double Word (32 Bits)
+#define MAX_LEN 64
 
 class CPaquet
 {
 	private:
-		BYTE  Tampon[256];
-		BYTE	Pointeur;
-		BYTE	Fin;
+		vector<UINT8> Tampon;
+		vector<UINT8>::iterator	Pointeur;
 
 		bool			LEndian;
-		PQ_RESULT		GetVoid			(unsigned char* Data, unsigned char Taille);
-		PQ_RESULT		GetVoid			(unsigned char Taille);
-		PQ_RESULT		AddVoid			(const unsigned char* Data, unsigned char Taille);
-		PQ_RESULT		AddVoid			(unsigned char Taille);
+		PQ_RESULT	GetVoid			(unsigned char* Data, size_t Taille);
+		PQ_RESULT	GetVoid			(size_t Taille);
+		PQ_RESULT	AddVoid			(const unsigned char* Data, size_t Taille);
+		PQ_RESULT	AddVoid			(size_t Taille);
 
 	public:
-						CPaquet			(bool Endian = true);
-						CPaquet			(unsigned char* Buffer, unsigned char Taille,bool Endian = true);
-						~CPaquet		();
-		PQ_RESULT		Set				(unsigned char* Buffer, unsigned char Taille);
-		PQ_RESULT		Get				(unsigned char* Buffer, unsigned char Taille);
-		unsigned char	GetSize			();
-		PQ_RESULT		GetByte			(BYTE& Byte);
-		PQ_RESULT		GetByte			(UBYTE& Byte);
+							CPaquet			(bool Endian = true);
+							CPaquet			(unsigned char* Buffer, size_t Taille,bool Endian = true);
+							~CPaquet			();
+		PQ_RESULT		Set				(unsigned char* Buffer, size_t Taille);
+		PQ_RESULT		Get				(unsigned char* Buffer, size_t Taille);
+		size_t			GetSize			();
+		PQ_RESULT		GetByte			(INT8& Byte);
+		PQ_RESULT		GetByte			(UINT8& Byte);
 		PQ_RESULT		GetByte			();
-		PQ_RESULT		GetWord			(WORD& Word);
-		PQ_RESULT		GetWord			(UWORD& Word);
+		PQ_RESULT		GetWord			(INT16& Word);
+		PQ_RESULT		GetWord			(UINT16& Word);
 		PQ_RESULT		GetWord			();
-		PQ_RESULT		GetDWord		(DWORD& DWord);
-		PQ_RESULT		GetDWord		(UDWORD& DWord);
-		PQ_RESULT		GetDWord		();
-		PQ_RESULT		GetFloat		(float& Real);
-		PQ_RESULT		GetFloat		();
-		PQ_RESULT		GetString		(String& Str);
+		PQ_RESULT		GetDWord			(INT32& DWord);
+		PQ_RESULT		GetDWord			(UINT32& DWord);
+		PQ_RESULT		GetDWord			();
+		PQ_RESULT		GetFloat			(float& Real);
+		PQ_RESULT		GetFloat			();
+		PQ_RESULT		GetString		(string& Str);
 		PQ_RESULT		GetString		();
-		PQ_RESULT		GetLongString	(String& Str);
+		PQ_RESULT		GetLongString	(string& Str);
 		PQ_RESULT		GetLongString	();
-		PQ_RESULT		GetStream		(unsigned char* Buffer, unsigned char Taille);
-		PQ_RESULT		GetStream		(unsigned char Taille);
-		PQ_RESULT		Clear				();
-		void				Begin				(){Pointeur=0;}
-		unsigned char	GetPos			();
+		PQ_RESULT		GetStream		(unsigned char* Buffer, size_t Taille);
+		PQ_RESULT		GetStream		(size_t Taille);
+		PQ_RESULT		Begin				();
+		PQ_RESULT		End				();
+		PQ_RESULT		Clear			();
+		size_t			GetPos			();
 		PQ_RESULT		Add				(CPaquet& Paquet);
-		PQ_RESULT		AddByte			(BYTE Byte);
-		PQ_RESULT		AddByte			(UBYTE Byte);
+		PQ_RESULT		AddByte			(INT8 Byte);
+		PQ_RESULT		AddByte			(UINT8 Byte);
 		PQ_RESULT		AddByte			();
-		PQ_RESULT		AddWord			(WORD Word);
-		PQ_RESULT		AddWord			(UWORD Word);
+		PQ_RESULT		AddWord			(INT16 Word);
+		PQ_RESULT		AddWord			(UINT16 Word);
 		PQ_RESULT		AddWord			();
-		PQ_RESULT		AddDWord		(DWORD DWord);
-		PQ_RESULT		AddDWord		(UDWORD DWord);
-		PQ_RESULT		AddDWord		();
-		PQ_RESULT		AddFloat		(float Real);
-		PQ_RESULT		AddFloat		();
-		PQ_RESULT		AddString		(const String& Str);
+		PQ_RESULT		AddDWord			(INT32 DWord);
+		PQ_RESULT		AddDWord			(UINT32 DWord);
+		PQ_RESULT		AddDWord			();
+		PQ_RESULT		AddFloat			(float Real);
+		PQ_RESULT		AddFloat			();
+		PQ_RESULT		AddString		(const string& Str);
 		PQ_RESULT		AddString		();
-		PQ_RESULT		AddLongString	(const String& Str);
+		PQ_RESULT		AddLongString	(const string& Str);
 		PQ_RESULT		AddLongString	();
-		PQ_RESULT		AddStream		(unsigned char* Buffer, unsigned char Taille);
-		PQ_RESULT		AddStream		(String& Str);
+		PQ_RESULT		AddStream		(unsigned char* Buffer, size_t Taille);
+		PQ_RESULT		AddStream		(string& Str);
 };
 
 #endif

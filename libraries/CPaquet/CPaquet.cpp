@@ -1,22 +1,3 @@
-ï»¿/**
-OpenWorlds Copyright (C) 2008 Neophile
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-**/
-
-
 // ****************************************************************************
 // *                                                                          *
 // *                 CPAQUET.H : Classe de formatage des paquets tcp          *
@@ -37,19 +18,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 CPaquet::CPaquet (bool pLEndian)
 {
-	Pointeur=0;
-	Fin=0;
+	Tampon.reserve(MAX_LEN);
+	Pointeur=Tampon.begin();
 	LEndian = pLEndian;
 }
 
 //-----------------------------------------------------------------------------
 // Constructeur avec initialisation
 
-CPaquet::CPaquet (unsigned char* Buffer, unsigned char Taille, bool pLEndian)
+CPaquet::CPaquet (unsigned char* Buffer, size_t Taille, bool pLEndian)
 {
 	LEndian = pLEndian;
-	Pointeur=0;
-	Fin=0;
+	Pointeur=Tampon.begin();
 	Set (Buffer,Taille);
 }
 
@@ -61,19 +41,18 @@ CPaquet::~CPaquet ()
 }
 
 //-----------------------------------------------------------------------------
-// Retourne des donn¨¦es de tous type en fonction du type endian de la plateforme
+// Retourne des donnÃ©es de tous type en fonction du type endian de la plateforme
 
-PQ_RESULT CPaquet::GetVoid(unsigned char* Data, unsigned char Taille)
+PQ_RESULT CPaquet::GetVoid(unsigned char* Data, size_t Taille)
 {
 	if (!Taille) return PQ_BAD_LENGTH;
-	unsigned char MemPtr;
+	size_t MemPtr;
 	if (LEndian) MemPtr=Taille-1;
 	else MemPtr=0;
 	for (unsigned char i = 0; i < Taille; i++)
 	{
-		if (Pointeur >= Fin) return PQ_EOF;
-		Data[MemPtr] = Tampon[Pointeur];
-		Pointeur ++;
+		if (Pointeur == Tampon.end()) return PQ_EOF;
+		Data[MemPtr] = *(Pointeur++);
 		if (LEndian) --MemPtr;
 		else ++MemPtr;
 	}
@@ -81,57 +60,51 @@ PQ_RESULT CPaquet::GetVoid(unsigned char* Data, unsigned char Taille)
 }
 
 //-----------------------------------------------------------------------------
-// Incr¨¦mente l'iterateur pour une donn¨¦e type
+// IncrÃ©mente l'iterateur pour une donnÃ©e type
 
-PQ_RESULT CPaquet::GetVoid(unsigned char Taille)
+PQ_RESULT CPaquet::GetVoid(size_t Taille)
 {
 	if (!Taille) return PQ_BAD_LENGTH;
-	if (Pointeur>(Fin-Taille)) return PQ_EOF;
+	if (Pointeur>=(Tampon.end()-(Taille-1))) return PQ_EOF;
 	Pointeur+= Taille;
 	return PQ_OK;
 }
 
 //-----------------------------------------------------------------------------
-// Ajoute  une donn¨¦es de tout type en fonction du type endian de la plateforme
+// Ajoute une donnÃ©es de tout type en fonction du type endian de la plateforme
 
-PQ_RESULT	CPaquet::AddVoid(const unsigned char* Data, unsigned char Taille)
+PQ_RESULT	CPaquet::AddVoid(const unsigned char* Data, size_t Taille)
 {
-	unsigned char PtrMem;
-	if (Pointeur>(256 - Taille)) return PQ_BAD_LENGTH;
+	size_t PtrMem;
 	if (LEndian) PtrMem = Taille -1;
 	else PtrMem = 0;
-	for (unsigned char i = 0; i < Taille; i++)
+	for (size_t i = 0; i < Taille; ++i)
 	{
-		Tampon[Pointeur]=Data[PtrMem];
+		Tampon.push_back(Data[PtrMem]);
 		if (LEndian) --PtrMem;
 		else ++PtrMem;
-		Pointeur++;
 	}
-	if (Fin<Pointeur) Fin=Pointeur;
 	return PQ_OK;
 }
 
 //-----------------------------------------------------------------------------
-// Ajoute des donn¨¦es nulle pour tout type
+// Ajoute des donnÃ©es nulle pour tout type
 
-PQ_RESULT	CPaquet::AddVoid(unsigned char Taille)
+PQ_RESULT	CPaquet::AddVoid(size_t Taille)
 {
-	if (Pointeur>(256 - Taille)) return PQ_BAD_LENGTH;
-	for (size_t i = 0; i < Taille; i++)
+	for (size_t i = 0; i < Taille; ++i)
 	{
-		Tampon[Pointeur]=0;
-		Pointeur++;
+		Tampon.push_back(0);
 	}
-	if (Fin<Pointeur) Fin=Pointeur;
 	return PQ_OK;
 }
 
 //-----------------------------------------------------------------------------
 // Remplie le buffer avec un autre buffer simple
 
-PQ_RESULT CPaquet::Set(unsigned char* Buffer, unsigned char Taille)
+PQ_RESULT CPaquet::Set(unsigned char* Buffer, size_t Taille)
 {
-	if (Taille > 256) return PQ_BAD_LENGTH;
+	if (Taille > MAX_LEN) return PQ_BAD_LENGTH;
 	Pointeur=0;
 	for (int i=0; i <= Taille; i++)
 	{
@@ -143,39 +116,36 @@ PQ_RESULT CPaquet::Set(unsigned char* Buffer, unsigned char Taille)
 //-----------------------------------------------------------------------------
 // Renvoie le buffer complet avec sa taille
 
-PQ_RESULT CPaquet::Get(unsigned char* Buffer, unsigned char Taille)
+PQ_RESULT CPaquet::Get(unsigned char* Buffer, size_t Taille)
 {
 	if (!Taille) return PQ_BAD_LENGTH;
-	if (Taille > 256) return PQ_BAD_LENGTH;
-	for (int i=0; i < Taille; i++)
-	{
-		Buffer[i]=Tampon[i];
-	}
+	if (Taille > Tampon.size()) Taille= Tampon.size();
+	copy ( Tampon.begin(), Tampon.begin()+Taille, Buffer);
 	return PQ_OK;
 }
 
 //-----------------------------------------------------------------------------
 // Renvoie la taille du buffer
 
-unsigned char CPaquet::GetSize ()
+size_t CPaquet::GetSize ()
 {
-	return Fin;
+	return Tampon.size();
 }
 
 //-----------------------------------------------------------------------------
 // Renvoi un octet signÃ©
 
-PQ_RESULT CPaquet::GetByte (BYTE& Byte)
+PQ_RESULT CPaquet::GetByte (INT8& Byte)
 {
-	return GetVoid((unsigned char*)(&Byte),sizeof(unsigned char));
+	return GetVoid((unsigned char*)(&Byte),sizeof(Byte));
 }
 
 //-----------------------------------------------------------------------------
 // Renvoi un octet non signÃ©
 
-PQ_RESULT CPaquet::GetByte (UBYTE& Byte)
+PQ_RESULT CPaquet::GetByte (UINT8& Byte)
 {
-	return GetVoid((unsigned char*)(&Byte),sizeof(unsigned char));
+	return GetVoid((unsigned char*)(&Byte),sizeof(Byte));
 }
 
 //-----------------------------------------------------------------------------
@@ -189,17 +159,17 @@ PQ_RESULT CPaquet::GetByte()
 //-----------------------------------------------------------------------------
 // Renvoi un mot signÃ© (2 octets)
 
-PQ_RESULT	CPaquet::GetWord(WORD& Word)
+PQ_RESULT	CPaquet::GetWord(INT16& Word)
 {
-	return GetVoid((unsigned char*)(&Word), sizeof(WORD));
+	return GetVoid((unsigned char*)(&Word), sizeof(Word));
 }
 
 //-----------------------------------------------------------------------------
 // Renvoi un mot non signÃ© (2 octets)
 
-PQ_RESULT	CPaquet::GetWord(UWORD& Word)
+PQ_RESULT	CPaquet::GetWord(UINT16& Word)
 {
-	return GetVoid((unsigned char*)(&Word), sizeof(WORD));
+	return GetVoid((unsigned char*)(&Word), sizeof(Word));
 }
 
 //-----------------------------------------------------------------------------
@@ -207,23 +177,23 @@ PQ_RESULT	CPaquet::GetWord(UWORD& Word)
 
 PQ_RESULT CPaquet::GetWord()
 {
-	return GetVoid(sizeof(WORD));
+	return GetVoid(sizeof(INT16));
 }
 
 //-----------------------------------------------------------------------------
 // Renvoie un mot double signÃ© (4 octets)
 
-PQ_RESULT CPaquet::GetDWord(DWORD& DWord)
+PQ_RESULT CPaquet::GetDWord(INT32& DWord)
 {
-	return GetVoid((unsigned char*)(&DWord), sizeof(DWORD));
+	return GetVoid((unsigned char*)(&DWord), sizeof(DWord));
 }
 
 //-----------------------------------------------------------------------------
 // Renvoie un mot double non signÃ© (4 octets)
 
-PQ_RESULT CPaquet::GetDWord(UDWORD& DWord)
+PQ_RESULT CPaquet::GetDWord(UINT32& DWord)
 {
-	return GetVoid((unsigned char*)(&DWord), sizeof(DWORD));
+	return GetVoid((unsigned char*)(&DWord), sizeof(DWord));
 }
 
 
@@ -232,13 +202,13 @@ PQ_RESULT CPaquet::GetDWord(UDWORD& DWord)
 
 PQ_RESULT CPaquet::GetDWord()
 {
-	return GetVoid(sizeof(DWORD));
+	return GetVoid(sizeof(INT32));
 }
 
 //-----------------------------------------------------------------------------
 // Renvoie un nombre flottant
 
-PQ_RESULT	CPaquet::GetFloat(float& Real)
+PQ_RESULT CPaquet::GetFloat(float& Real)
 {
 	return GetVoid((unsigned char*)(&Real), sizeof(float));
 }
@@ -254,16 +224,15 @@ PQ_RESULT CPaquet::GetFloat()
 //-----------------------------------------------------------------------------
 // Renvoie une chaine de charactÃ¨re
 
-PQ_RESULT CPaquet::GetString(String& Str)
+PQ_RESULT CPaquet::GetString(string& Str)
 {
-	unsigned char Taille;
+	UINT8 Taille;
 	Str="";
 	if (GetByte(Taille)) return PQ_EOF;
-	if (Pointeur >(256-Taille)) return PQ_BAD_LENGTH;
+	if (Pointeur >(Tampon.end()-Taille)) return PQ_BAD_LENGTH;
 	for (size_t i=0; i<Taille; i++)
 	{
-		Str += Tampon[Pointeur];
-		Pointeur++;
+		Str += (char)*(Pointeur++);
 	}
 	return PQ_OK;
 }
@@ -273,7 +242,7 @@ PQ_RESULT CPaquet::GetString(String& Str)
 
 PQ_RESULT CPaquet::GetString()
 {
-	unsigned char Taille;
+	UINT8 Taille;
 	if (GetByte(Taille)) return PQ_EOF;
 	return GetStream(Taille);
 }
@@ -281,16 +250,15 @@ PQ_RESULT CPaquet::GetString()
 //-----------------------------------------------------------------------------
 // Renvoie une chaine de charactere de grande longueur
 
-PQ_RESULT CPaquet::GetLongString(String& Str)
+PQ_RESULT CPaquet::GetLongString(string& Str)
 {
-	WORD Taille;
+	UINT16 Taille;
 	Str="";
 	if (GetWord (Taille)) return PQ_EOF;
-	for (WORD i=0; i<Taille; ++i)
+	for (UINT16 i=0; i<Taille; ++i)
 	{
-		if (Pointeur>Fin) return PQ_EOF;
-		Str += Tampon[Pointeur];
-		Pointeur ++;
+		if (Pointeur==Tampon.end()) return PQ_EOF;
+		Str += (char)*(Pointeur++);;
 	}
 	return PQ_OK;
 }
@@ -300,7 +268,7 @@ PQ_RESULT CPaquet::GetLongString(String& Str)
 
 PQ_RESULT CPaquet::GetLongString()
 {
-	WORD Taille;
+	UINT16 Taille;
 	if (GetWord (Taille)) return PQ_EOF;
 	return GetStream(Taille);
 }
@@ -308,13 +276,12 @@ PQ_RESULT CPaquet::GetLongString()
 //-----------------------------------------------------------------------------
 // Renvoie une suite d'octets
 
-PQ_RESULT CPaquet::GetStream(unsigned char* Buffer, unsigned char Taille)
+PQ_RESULT CPaquet::GetStream(unsigned char* Buffer, size_t Taille)
 {
-	for (unsigned char i=0; i<Taille ; ++i)
+	for (size_t i=0; i<Taille ; ++i)
 	{
-		if (Pointeur>Fin) return PQ_EOF;
-		Buffer[i]=Tampon[Pointeur];
-		Pointeur++;
+		if (Pointeur==Tampon.end()) return PQ_EOF;
+		Buffer[i]=*(Pointeur++);;
 	}
 	return PQ_OK;
 }
@@ -322,13 +289,31 @@ PQ_RESULT CPaquet::GetStream(unsigned char* Buffer, unsigned char Taille)
 //-----------------------------------------------------------------------------
 // Saute une suite d'octets
 
-PQ_RESULT CPaquet::GetStream(unsigned char Taille)
+PQ_RESULT CPaquet::GetStream(size_t Taille)
 {
-	for (int i=0; i<Taille ; ++i)
+	for (size_t i=0; i<Taille ; ++i)
 	{
-		if (Pointeur>Fin) return PQ_EOF;
-		Pointeur++;
+		if (Pointeur==Tampon.end()) return PQ_EOF;
+		++Pointeur;
 	}
+	return PQ_OK;
+}
+
+//-----------------------------------------------------------------------------
+// Déplace le pointeur au début du buffer
+
+PQ_RESULT CPaquet::Begin()
+{
+	Pointeur=Tampon.begin();
+	return PQ_OK;
+}
+
+//-----------------------------------------------------------------------------
+// Déplace le pointeur à la fin du buffer
+
+PQ_RESULT CPaquet::End()
+{
+	Pointeur=Tampon.end();
 	return PQ_OK;
 }
 
@@ -337,21 +322,16 @@ PQ_RESULT CPaquet::GetStream(unsigned char Taille)
 
 PQ_RESULT CPaquet::Clear()
 {
-	for (int i=0;i<256;i++)
-	{
-		Tampon[i]=0;
-	}
-	Pointeur=0;
-	Fin=0;
-	return PQ_OK;
+	Tampon.clear();
+	return CPaquet::Begin ();
 }
 
 //-----------------------------------------------------------------------------
 // Donne la position du pointeur dans le buffer
 
-unsigned char CPaquet::GetPos ()
+size_t CPaquet::GetPos ()
 {
-	return Pointeur;
+	return Pointeur - Tampon.begin();
 }
 
 //-----------------------------------------------------------------------------
@@ -359,29 +339,27 @@ unsigned char CPaquet::GetPos ()
 
 PQ_RESULT CPaquet::Add(CPaquet& Paquet)
 {
-	if ((Paquet.Fin + Pointeur) >= 255 ) return PQ_BAD_LENGTH;
-	for (int i=0; i <= Paquet.Fin; i++)
+	for (vector<UINT8>::iterator i = Paquet.Tampon.begin(); i != Paquet.Tampon.end(); ++i)
 	{
-		Tampon[Pointeur] = Paquet.Tampon[i];
+		Tampon.push_back(*i);
 	}
-	if (Fin<Pointeur) Fin=Pointeur;
 	return PQ_OK;
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'un Octet signÃ©
 
-PQ_RESULT CPaquet::AddByte(BYTE Byte)
+PQ_RESULT CPaquet::AddByte(INT8 Byte)
 {
-	return AddVoid((const unsigned char*)(&Byte), sizeof(unsigned char));
+	return AddVoid((const unsigned char*)(&Byte), sizeof(Byte));
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'un Octet non signÃ©
 
-PQ_RESULT CPaquet::AddByte(UBYTE Byte)
+PQ_RESULT CPaquet::AddByte(UINT8 Byte)
 {
-	return AddVoid((const unsigned char*)(&Byte), sizeof(unsigned char));
+	return AddVoid((const unsigned char*)(&Byte), sizeof(Byte));
 }
 
 //-----------------------------------------------------------------------------
@@ -395,17 +373,17 @@ PQ_RESULT CPaquet::AddByte()
 //-----------------------------------------------------------------------------
 // Ajout d'un mot signÃ©(2 octets)
 
-PQ_RESULT CPaquet::AddWord(WORD Word)
+PQ_RESULT CPaquet::AddWord(INT16 Word)
 {
-	return AddVoid((const unsigned char*)(&Word), sizeof (WORD));
+	return AddVoid((const unsigned char*)(&Word), sizeof (Word));
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'un mot non signÃ©(2 octets)
 
-PQ_RESULT CPaquet::AddWord(UWORD Word)
+PQ_RESULT CPaquet::AddWord(UINT16 Word)
 {
-	return AddVoid((const unsigned char*)(&Word), sizeof (WORD));
+	return AddVoid((const unsigned char*)(&Word), sizeof (Word));
 }
 
 //-----------------------------------------------------------------------------
@@ -413,38 +391,38 @@ PQ_RESULT CPaquet::AddWord(UWORD Word)
 
 PQ_RESULT CPaquet::AddWord()
 {
-	return AddVoid (sizeof(WORD));
+	return AddVoid (sizeof(INT16));
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'un double mot signÃ© (4 octets)
 
-PQ_RESULT CPaquet::AddDWord(DWORD Dword)
+PQ_RESULT CPaquet::AddDWord(INT32 Dword)
 {
-	return AddVoid((const unsigned char*)(&Dword), sizeof(DWORD));
+	return AddVoid((const unsigned char*)(&Dword), sizeof(Dword));
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'un double mot non signÃ© (4 octets)
 
-PQ_RESULT CPaquet::AddDWord(UDWORD Dword)
+PQ_RESULT CPaquet::AddDWord(UINT32 Dword)
 {
-	return AddVoid((const unsigned char*)(&Dword), sizeof(UDWORD));
+	return AddVoid((const unsigned char*)(&Dword), sizeof(Dword));
 }
 
 
 //-----------------------------------------------------------------------------
 // Ajout d'un double mot vide
 
-PQ_RESULT	CPaquet::AddDWord()
+PQ_RESULT CPaquet::AddDWord()
 {
-	return AddVoid (sizeof(DWORD));
+	return AddVoid (sizeof(INT32));
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'un nombre flotant
 
-PQ_RESULT	CPaquet::AddFloat(float Real)
+PQ_RESULT CPaquet::AddFloat(float Real)
 {
 	return AddVoid((const unsigned char*)(&Real), sizeof (float));
 }
@@ -453,7 +431,7 @@ PQ_RESULT	CPaquet::AddFloat(float Real)
 //-----------------------------------------------------------------------------
 // Ajout d'un flottant vide
 
-PQ_RESULT	CPaquet::AddFloat()
+PQ_RESULT CPaquet::AddFloat()
 {
 	return AddVoid (sizeof(float));
 }
@@ -461,18 +439,14 @@ PQ_RESULT	CPaquet::AddFloat()
 //-----------------------------------------------------------------------------
 // Ajout d'une chaine de characteres au format PROTO AW
 
-PQ_RESULT CPaquet::AddString(const String& Str)
+PQ_RESULT CPaquet::AddString(const string& Str)
 {
-	unsigned char Taille=Str.length();
-	if (Taille >255) return PQ_TOO_LONG;
-	if ((Pointeur + Taille + 1) > 256) return PQ_BAD_LENGTH;
-	AddByte (Taille);
-	for (unsigned char i=0; i<Taille; i++)
+	if (Str.length() > (MAX_LEN-1)) return PQ_TOO_LONG;
+	AddByte ((UINT8)Str.length());
+	for (size_t i=0; i<Str.length(); ++i)
 	{
-		Tampon[Pointeur]=Str.charAt(i);
-		Pointeur++;
+		Tampon.push_back(Str[i]);
 	}
-	if (Fin<Pointeur) Fin=Pointeur;
 	return PQ_OK;
 }
 
@@ -488,18 +462,15 @@ PQ_RESULT CPaquet::AddString()
 //-----------------------------------------------------------------------------
 // Ajout d'une chaine longue de charactere
 
-PQ_RESULT CPaquet::AddLongString(const String& Str)
+PQ_RESULT CPaquet::AddLongString(const string& Str)
 {
-	WORD Taille = Str.length ();
-	if (Taille > 200) Taille=200;
-	if ((Pointeur + Taille + 2) > 256) return PQ_BAD_LENGTH;
+	UINT16 Taille = Str.length ();
+	if (Taille > 1000) Taille=1000;
 	AddWord (Taille);
-	for (WORD i=0; i<Taille; i++)
+	for (size_t i=0; i<Taille; ++i)
 	{
-		Tampon[Pointeur] = Str[i];
-		Pointeur++;
+		Tampon.push_back (Str[i]);
 	}
-	if (Fin<Pointeur) Fin=Pointeur;
 	return PQ_OK;
 }
 
@@ -508,17 +479,16 @@ PQ_RESULT CPaquet::AddLongString(const String& Str)
 
 PQ_RESULT CPaquet::AddLongString()
 {
-	WORD Word=0;
+	UINT16 Word=0;
 	return AddWord(Word);;
 }
 
 //-----------------------------------------------------------------------------
 // Ajout d'une suite d'octets
 
-PQ_RESULT CPaquet::AddStream(unsigned char* Buffer, unsigned char Taille)
+PQ_RESULT CPaquet::AddStream(unsigned char* Buffer, size_t Taille)
 {
-	if ((Pointeur + Taille ) > 256) return PQ_BAD_LENGTH;
-	for (unsigned char i=0; i < Taille; i++)
+	for (size_t i=0; i < Taille; ++i)
 	{
 		AddByte(Buffer[i]);
 	}
@@ -528,10 +498,9 @@ PQ_RESULT CPaquet::AddStream(unsigned char* Buffer, unsigned char Taille)
 //-----------------------------------------------------------------------------
 // Ajout d'une suite d'octets
 
-PQ_RESULT CPaquet::AddStream(String& Str)
+PQ_RESULT CPaquet::AddStream(string& Str)
 {
-	if ((Pointeur + Str.length() ) > 256) return PQ_BAD_LENGTH;
-	for (unsigned char i=0; i < Str.length(); ++i)
+	for (size_t i=0; i < Str.length(); ++i)
 	{
 		AddByte(Str[i]);
 	}
