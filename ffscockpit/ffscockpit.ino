@@ -5,16 +5,20 @@
 #include <iterator>
 #include <vector>
 #include <string>
+#include <CTimer.h>
 #include <Wire.h>
 #include "CPaquet.h"
 
 using namespace std;
 
-UINT8 NBSlave=0;
-UINT8 CurSlave=0;
 UINT8* Buffer;
 CPaquet SentData;
 vector<CPaquet> Pile;
+vector<int> Esclaves;
+vector<int>::iterator CurSlave;
+UINT8 address;
+
+CTimer* T1;
 CPaquet Data;
 int DataLen;
 
@@ -30,6 +34,10 @@ void setup()
   Serial.begin(115200);
   SendMessage("Master ok");
   DataLen = 0;
+  T1=CCtrlTimer::Instance()->AddTimer(1000,ScanSlave);
+  T1->Start();
+  address=1;
+  CurSlave = Esclaves.end();
   Wire.begin();
   
 }
@@ -37,11 +45,24 @@ void setup()
 void loop()
 {
   unsigned int td = millis();
+  CCtrlTimer::Instance()->Update();
   ListenSerial(); //Ecoute le port série et traite les messages si besoin est
   //mesure du temps écoulé pour syncroniser la prochaine boucle
   TraitementEsclave();
   unsigned int tf = millis();
   delay (10 - (tf-td));
+}
+
+void ScanSlave(CTimer* me)
+{
+  Wire.beginTransmission(address);
+  
+  if (Wire.endTransmission() == 0)
+  {
+    Esclaves.push_back(address);
+  }
+  address++;
+  if (address > 127) me->Stop();
 }
 
 void SerialSend(CPaquet& Paquet)
@@ -75,13 +96,6 @@ void Traitement (CPaquet& Commande)
     Commande.GetByte(Code);
     switch (Code)
     {
-      case FFS_NSL:
-        Commande.GetByte(NBSlave);
-        CurSlave = 1;
-        Message = "No d'esclave=";
-        //Message += itoa(NBSlave);
-        SendMessage(Message);
-        break;
       default:
         break;
     }
@@ -133,18 +147,18 @@ void TraitementEsclave ()
     }
     Pile.erase(i);
   }
-  if (NBSlave>0)
+  if (!Esclaves.empty())
   {
+    if (CurSlave==Esclaves.end()) CurSlave=Esclaves.begin();
     SentData.Clear();
-    Wire.beginTransmission(CurSlave);
-    Wire.requestFrom((int)CurSlave,1);
+    Wire.requestFrom(*CurSlave,1);
     while(Wire.available())
     {
       Byte = Wire.read();
     }
     if (Byte>0)
     {
-      Wire.requestFrom((int)CurSlave,(int)Byte);
+      Wire.requestFrom(*CurSlave,(int)Byte);
       while(Wire.available())
       {
         Byte = Wire.read();
@@ -152,9 +166,7 @@ void TraitementEsclave ()
       }
       SerialSend(SentData);
     }
-    Wire.endTransmission();
-    CurSlave++;
-    if (CurSlave>NBSlave) CurSlave=1;
+    ++CurSlave;
   }
 }
 
