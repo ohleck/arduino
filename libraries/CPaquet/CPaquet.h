@@ -21,7 +21,6 @@
 #include <utility.h>
 #include <iterator>
 #include <vector>
-#include <string>
 
 using namespace std;
 enum PQ_RESULT
@@ -69,9 +68,9 @@ class CPaquet
 		PQ_RESULT		GetDWord			();
 		PQ_RESULT		GetFloat			(float& Real);
 		PQ_RESULT		GetFloat			();
-		PQ_RESULT		GetString		(string& Str);
+		PQ_RESULT		GetString		(String& Str);
 		PQ_RESULT		GetString		();
-		PQ_RESULT		GetLongString	(string& Str);
+		PQ_RESULT		GetLongString	(String& Str);
 		PQ_RESULT		GetLongString	();
 		PQ_RESULT		GetStream		(unsigned char* Buffer, size_t Taille);
 		PQ_RESULT		GetStream		(size_t Taille);
@@ -91,12 +90,12 @@ class CPaquet
 		PQ_RESULT		AddDWord			();
 		PQ_RESULT		AddFloat			(float Real);
 		PQ_RESULT		AddFloat			();
-		PQ_RESULT		AddString		(const string& Str);
+		PQ_RESULT		AddString		(const String& Str);
 		PQ_RESULT		AddString		();
-		PQ_RESULT		AddLongString	(const string& Str);
+		PQ_RESULT		AddLongString	(const String& Str);
 		PQ_RESULT		AddLongString	();
 		PQ_RESULT		AddStream		(unsigned char* Buffer, size_t Taille);
-		PQ_RESULT		AddStream		(string& Str);
+		PQ_RESULT		AddStream		(String& Str);
 };
 
 #endif

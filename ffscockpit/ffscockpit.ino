@@ -4,7 +4,6 @@
 #include <utility.h>
 #include <iterator>
 #include <vector>
-#include <string>
 #include <CTimer.h>
 #include <Wire.h>
 #include "CPaquet.h"
@@ -12,12 +11,10 @@
 using namespace std;
 
 UINT8* Buffer;
-CPaquet SentData;
-vector<CPaquet> Pile;
 vector<int> Esclaves;
 vector<int>::iterator CurSlave;
 UINT8 address;
-
+UINT8 SlaveRecept;
 CTimer* T1;
 CPaquet Data;
 int DataLen;
@@ -29,14 +26,14 @@ int DataLen;
 
 void setup()
 {
-  Pile.reserve(5);
   Buffer = new unsigned char[64];
   Serial.begin(115200);
   SendMessage("Master ok");
   DataLen = 0;
-  T1=CCtrlTimer::Instance()->AddTimer(1000,ScanSlave);
-  T1->Start();
+  T1=CCtrlTimer::Instance()->AddTimer(100,ScanSlave);
+  T1->Start(100);
   address=1;
+  SlaveRecept=0;
   CurSlave = Esclaves.end();
   Wire.begin();
   
@@ -45,12 +42,13 @@ void setup()
 void loop()
 {
   unsigned int td = millis();
-  CCtrlTimer::Instance()->Update();
   ListenSerial(); //Ecoute le port série et traite les messages si besoin est
   //mesure du temps écoulé pour syncroniser la prochaine boucle
-  TraitementEsclave();
+  
+  Slave();
   unsigned int tf = millis();
   delay (10 - (tf-td));
+  CCtrlTimer::Instance()->Update();
 }
 
 void ScanSlave(CTimer* me)
@@ -75,20 +73,21 @@ void SerialSend(CPaquet& Paquet)
   }
 }
 
-void SendMessage(const string& Message)
+void SendMessage(const String& Message)
 {
-  SentData.Clear();
-  SentData.AddByte((UINT8)0); // Master = esclave 0
-  SentData.AddByte(FFS_LOG);
-  SentData.AddString(Message);
-  SerialSend(SentData);
+  CPaquet Data;
+  Data.AddByte((UINT8)0); // Master = esclave 0
+  Data.AddByte(FFS_LOG);
+  Data.AddString(Message);
+  SerialSend(Data);
 }
 
 void Traitement (CPaquet& Commande)
 {
-  string Message;
+  String Message;
   Commande.Begin();
   UINT8 Esclave;
+  UINT8 Len;
   Commande.GetByte(Esclave);
   if (!Esclave)
   {
@@ -102,7 +101,12 @@ void Traitement (CPaquet& Commande)
   }
   else
   {
-    if (Pile.size() < 5 ) Pile.push_back(Commande); // Si autre esclave alors on met le paquet dans la pile
+    //if (Pile.size() < 4 ) Pile.push_back(Commande); // Si autre esclave alors on met le paquet dans la pile
+    Len=Commande.GetSize();
+    Commande.Get(Buffer,Len);
+    Wire.beginTransmission(Esclave);
+    Wire.write(Buffer,Len);
+    Wire.endTransmission();
   }
   Commande.Clear();
 }
@@ -128,46 +132,43 @@ void ListenSerial()
   }
 }
 
-void TraitementEsclave ()
+void Slave()
 {
-  UINT8 Byte=0;
-  //Traitement de la comm descendante
-  if (Pile.size() > 0)
+  UINT8 Esclave;
+  CPaquet Buffer;
+  /*if (!Pile.empty())
   {
-    vector<CPaquet>::iterator i = Pile.begin();
-    UINT8 Esclave;
-    i->Begin();
-    UINT8 Len=i->GetSize();
-    i->GetByte(Esclave);
-    if (i->Get(Buffer,Len)==PQ_OK)
-    {
-      Wire.beginTransmission(Esclave);
-      Wire.write(Buffer,Len);
-      Wire.endTransmission();
-    }
-    Pile.erase(i);
-  }
-  if (!Esclaves.empty())
+    vector<CPaquet>::iterator it=Pile.begin();
+    it->Begin();
+    it->GetByte(Esclave);
+    Len=it->GetSize();
+    it->Get(Buffer,Len);
+    Pile.erase(it);
+    Wire.beginTransmission(Esclave);
+    Wire.write(Buffer,Len);
+    Wire.endTransmission();
+  }*/
+  
+  // Request Slave information
+  if (Esclaves.empty()) return;
+  if (CurSlave==Esclaves.end()) CurSlave=Esclaves.begin();
+  if (!SlaveRecept)
   {
-    if (CurSlave==Esclaves.end()) CurSlave=Esclaves.begin();
-    SentData.Clear();
     Wire.requestFrom(*CurSlave,1);
-    while(Wire.available())
-    {
-      Byte = Wire.read();
-    }
-    if (Byte>0)
-    {
-      Wire.requestFrom(*CurSlave,(int)Byte);
-      while(Wire.available())
-      {
-        Byte = Wire.read();
-        SentData.AddByte(Byte);
-      }
-      SerialSend(SentData);
-    }
-    ++CurSlave;
+    while (Wire.available()) SlaveRecept = Wire.read();
   }
+  else
+  {  
+    Wire.requestFrom(*CurSlave,(int)SlaveRecept);
+    while(SlaveRecept>0)
+    {
+      UINT8 Octet = (UINT8)Wire.read();
+      Buffer.AddByte(Octet);
+      SlaveRecept--;
+    }
+    SerialSend(Buffer);
+  }
+  if (!SlaveRecept) ++CurSlave;
 }
 
 

@@ -1,0 +1,10 @@
+#ifndef FFSPROTOCOLE_H
+#define FFSPROTOCOLE_H
+
+#define FFS_LOG  (UINT8)0x00
+#define FFS_ADF  (UINT8)0x01
+#define FFS_NAV  (UINT8)0x02
+#define FFS_ALT  (UINT8)0x03
+#define FFS_SERVICE   (UINT8)0xFF
+
+#endif // FFSPROTOCOLE_H

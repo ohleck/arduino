@@ -224,7 +224,7 @@ PQ_RESULT CPaquet::GetFloat()
 //-----------------------------------------------------------------------------
 // Renvoie une chaine de charactère
 
-PQ_RESULT CPaquet::GetString(string& Str)
+PQ_RESULT CPaquet::GetString(String& Str)
 {
 	UINT8 Taille;
 	Str="";
@@ -250,7 +250,7 @@ PQ_RESULT CPaquet::GetString()
 //-----------------------------------------------------------------------------
 // Renvoie une chaine de charactere de grande longueur
 
-PQ_RESULT CPaquet::GetLongString(string& Str)
+PQ_RESULT CPaquet::GetLongString(String& Str)
 {
 	UINT16 Taille;
 	Str="";
@@ -439,7 +439,7 @@ PQ_RESULT CPaquet::AddFloat()
 //-----------------------------------------------------------------------------
 // Ajout d'une chaine de characteres au format PROTO AW
 
-PQ_RESULT CPaquet::AddString(const string& Str)
+PQ_RESULT CPaquet::AddString(const String& Str)
 {
 	if (Str.length() > (MAX_LEN-1)) return PQ_TOO_LONG;
 	AddByte ((UINT8)Str.length());
@@ -462,7 +462,7 @@ PQ_RESULT CPaquet::AddString()
 //-----------------------------------------------------------------------------
 // Ajout d'une chaine longue de charactere
 
-PQ_RESULT CPaquet::AddLongString(const string& Str)
+PQ_RESULT CPaquet::AddLongString(const String& Str)
 {
 	UINT16 Taille = Str.length ();
 	if (Taille > 1000) Taille=1000;
@@ -498,7 +498,7 @@ PQ_RESULT CPaquet::AddStream(unsigned char* Buffer, size_t Taille)
 //-----------------------------------------------------------------------------
 // Ajout d'une suite d'octets
 
-PQ_RESULT CPaquet::AddStream(string& Str)
+PQ_RESULT CPaquet::AddStream(String& Str)
 {
 	for (size_t i=0; i < Str.length(); ++i)
 	{

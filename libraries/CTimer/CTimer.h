@@ -8,7 +8,7 @@
 * \version 0.1
 * \date 15/11/2014
 *
-* Timer + Controller Class for arduino 
+* Timer + Controller Class for arduino
 *
 */
 
@@ -31,23 +31,23 @@ typedef void (*TimerCallback)(CTimer* pTimer); /*!> Callback prototype for Timer
  *
  *  Timer Class for arduino board
  */
- 
+
 class CTimer
 {
 	public:
-		
+
 		/* \brief CTimer constructor
 		 *
 		 *  int Duration : Timer duration in msec
 		 * TimerCallback CallBack : address of callback timer function in format:
-		 * 	void myEventTimerFunction (CTimer* Timer) 
+		 * 	void myEventTimerFunction (CTimer* Timer)
 		 */
 		CTimer (int Duration, TimerCallback CallBack);
-		
+
 		/* \brief CTimer destructor
 		 */
 		~CTimer(){}
-		
+
 		/* \brief CTimer Updater
 		 *
 		 * This method update the timer and call the callback function if time duration elapsed
@@ -55,15 +55,15 @@ class CTimer
 		 * need to be placed in loop
 		 */
 		void	Update();
-		
-		
+
+
 		void	Start(int Duration=0,bool OneShoot=false );
 		void	Stop();
 		bool	IsRunning();
 	private:
 		int m_iDuration;
 		bool	m_bOneShoot;
-		unsigned int m_uiStartTime;
+		unsigned long m_uiStartTime;
 		TimerCallback m_pCallback;
 };
 
